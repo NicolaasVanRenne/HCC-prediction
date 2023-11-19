@@ -32,20 +32,31 @@ In the output folder, all files will be stored that are created with this code a
 10) serumIgA_bulkRNA_correlation.R
 11) serum_cohort_IgA.R (all patients or patients with censored time>1 year can be set in this code)
 
-    
+## generating a clinical gene signature on your own data
+You can also use this code to create a gene signature with your own gene expression data. Gene expression file should be .gct format, and file names can be changed in the calculacte_signature.R code.
 
-
-
+	input.filename.gct="your_gene_expression_file.gct" 	#gene expression file in gct format
+	input.filename.clinical="your_meta_data_file.txt" # .txt file with three columns (name	status	time) which contain sample name, event (yes=1, no=0) and right-censored time
+	output.file = "your_output_name"									#output file name
+	
+	set.p.value = 0.1 #p.value cutoff for Leave-One-Out-Cross-Validation. Only genes that pass this threshold in each iteration will be selected for the signature
+	
 
 Installation
 ------------
-All code was written for R, and can be easily run in the R environment. 
+All code was written for R, and can be easily run in the R environment. Installation time for the packages is minimal (few minutes).  
 
-## Dependencies 
+## System requirements 
 * R version >= 4.0.3. 
 * R packages: survival, data.table, survminer, patchwork, dplyr, ggrepel, ggplot2, circlize, ComplexHeatmap, Seurat, harmony, ggsci, RColorBrewer, MuSiC, Biobase, ggpubr, lubridate, pROC
 
 The code was run in R x64 4.0.3 installed on operating system Windows 10
+
+No special hardware is required.
+
+## Run time
+Calculating the signature takes around an hour (running all the permutations takes time). All other code takes minimal computing time. 
+
 
 ## Issues
 All feedback, bug reports (if any) and suggestions are welcome
