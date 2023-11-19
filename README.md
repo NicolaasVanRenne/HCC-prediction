@@ -19,7 +19,7 @@ The scRNA-seq data seurat object can be downloaded from Zenodo (DOI 10.5281/zeno
 In the output folder, all files will be stored that are created with this code and that are loaded in the different .R code modules. 
 
 
-# order of code
+## order of code
 1) calculate_signature.R
 2) NTP_HCC_risk_prediction.R
 3) volcanoplot_cox_scores.R
