@@ -1,4 +1,4 @@
-This code is released under teh MIT license, except for specific portions of the code originating from GenePattern which are distributed under their respective BSD-license as indicated in the .R files.
+This code is released under the MIT license, except for specific portions of the code originating from GenePattern which are distributed under their respective BSD-license as indicated in the .R files.
 
 Copyright 2023 Nicolaas Van Renne
 
