@@ -19,7 +19,7 @@
 	library(survminer)
 
 #load databases
-	IgA.df 	<- read.table(file="data_files/serum_data/serum_cohort.txt", sep="\t", header=T)
+	IgA.df 	<- read.table(file="data_files/serum_data/serum_cohort_binned.txt", sep="\t", header=T)
 
 	if(remove.1year==TRUE){
 		(print("removed all patients with less than 1 year censored time from the serum cohort, n= 169"))
@@ -36,7 +36,6 @@
 	if(transform.censoredtime == "yes"){
 		IgA.df$CensoredTime <- (IgA.df$CensoredTime / 365.24)
 	}
-
 
 #add HBV
 	IgA.df$HBV <- rep(NA,nrow(IgA.df))
@@ -66,8 +65,185 @@
 		if(IgA.df$Virus[i] == "HBV-HDV"){ IgA.df$HBVDelta[i] <- "yes" }
 		if(IgA.df$Virus[i] != "HBV-HDV"){ IgA.df$HBVDelta[i] <- "no" }
 	}
+
+#AUROC serum IgA (for n=188)
+	if(remove.1year==TRUE){print("set remove.1year = FALSE to reproduce AUROC table, based on all patients (n=188)")}
+		library(pROC)
+	
+		#AUROC SerumIgA	
+		roc.result <- roc(IgA.df$BinaryHCC, IgA.df$SerumIgA) #roc(category,predictor)
+		auc(roc.result)
+		plot(roc.result)
+	
+		#AUROC SerumIgA50
+		roc.result <- roc(IgA.df$BinaryHCC, IgA.df$SerumIgA50) #roc(category,predictor)
+		auc(roc.result)
+		plot(roc.result)
+	
+		#manual ROC cutoffs for IgA50
+			ROC.df <- IgA.df[order(IgA.df$SerumIgA),][,colnames(IgA.df) %in% c("SerumIgA","SerumIgA50","BinaryHCC")]
+			n.events <- sum(ROC.df$BinaryHCC)
+	
+			for (i in 1:nrow(ROC.df)){
+				ROC.df$IgA50HCC[i] <- sum(ROC.df[ROC.df$SerumIgA50 == ROC.df$SerumIgA50[i],]$BinaryHCC)
+			}
+			
+			ROC.df <- ROC.df[!duplicated(as.numeric(ROC.df$SerumIgA50)),][,3:4] #only retain serumIgA50
+			
+			AUROC.table <- cbind(rbind(rep(0,2),ROC.df),roc.result$sensitivities,roc.result$specificities)
+			AUROC.table
 	
 	
+#add serum IgA <=150; >150 & < 400 ; >= 400
+	SerumIgA3bin <- rep(0, nrow(IgA.df))
+	for(i in seq_along(SerumIgA3bin)){
+		if(IgA.df$SerumIgA[i] <= 150){ SerumIgA3bin[i] <-0 }
+		if(IgA.df$SerumIgA[i] > 150 & IgA.df$SerumIgA[i] < 400){ SerumIgA3bin[i] <-1 }
+		if(IgA.df$SerumIgA[i] > 400){ SerumIgA3bin[i] <-2 }
+	}
+	
+	IgA.df$SerumIgA3bin <- SerumIgA3bin
+
+
+# Cox regression analysis 
+	#### Age coxph
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Age, data = IgA.df, method = "efron", robust = F)
+		summary(coxph.result)
+		summary(coxph.result)$logtest
+		summary(coxph.result)$logtest[3] %>% as.numeric
+		summary(coxph.result)$waldtest
+		summary(coxph.result)$waldtest[3] %>% as.numeric
+		coxph.result$wald.test #wald test score
+		pie.age <- coxph.result$wald.test #wald test score
+	
+	
+	#### SerumIgA50 coxph
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA50, data = IgA.df, method = "efron", robust = F)
+		summary(coxph.result)
+		summary(coxph.result)$logtest
+		summary(coxph.result)$logtest[3] %>% as.numeric
+		summary(coxph.result)$waldtest
+		summary(coxph.result)$waldtest[3] %>% as.numeric
+		coxph.result$wald.test #wald test score
+
+	#### SerumIgA3bin coxph
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA3bin, data = IgA.df, method = "efron", robust = F)
+		summary(coxph.result)
+		summary(coxph.result)$logtest
+		summary(coxph.result)$logtest[3] %>% as.numeric
+		summary(coxph.result)$waldtest
+		summary(coxph.result)$waldtest[3] %>% as.numeric
+		coxph.result$wald.test #wald test score
+		pie.serumIgA3bin <- coxph.result$wald.test #wald test score
+	
+	#### Fibrosis coxph
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Fibrosis, data = IgA.df, method = "efron", robust = F)
+		summary(coxph.result)
+		summary(coxph.result)$logtest
+		summary(coxph.result)$logtest[3] %>% as.numeric
+		summary(coxph.result)$waldtest
+		summary(coxph.result)$waldtest[3] %>% as.numeric
+		coxph.result$wald.test #wald test score
+		pie.fibrosis <- coxph.result$wald.test #wald test score
+	
+	
+	#### HIV
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HIV, data = IgA.df, method = "efron", robust = F)
+		summary(coxph.result)
+		summary(coxph.result)$logtest
+		summary(coxph.result)$logtest[3] %>% as.numeric
+		summary(coxph.result)$waldtest
+		summary(coxph.result)$waldtest[3] %>% as.numeric
+		coxph.result$wald.test #wald test score
+	
+	
+	#### HCV
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HCV, data = IgA.df, method = "efron", robust = F)
+		summary(coxph.result)
+		summary(coxph.result)$logtest
+		summary(coxph.result)$logtest[3] %>% as.numeric
+		summary(coxph.result)$waldtest
+		summary(coxph.result)$waldtest[3] %>% as.numeric
+		coxph.result$wald.test #wald test score
+	
+	#### HBV
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBV, data = IgA.df, method = "efron", robust = F)
+		summary(coxph.result)
+		summary(coxph.result)$logtest
+		summary(coxph.result)$logtest[3] %>% as.numeric
+		summary(coxph.result)$waldtest
+		summary(coxph.result)$waldtest[3] %>% as.numeric
+		coxph.result$wald.test #wald test score
+	
+	#### HBV-HCV
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBVHCV, data = IgA.df, method = "efron", robust = F)
+		summary(coxph.result)
+		summary(coxph.result)$logtest
+		summary(coxph.result)$logtest[3] %>% as.numeric
+		summary(coxph.result)$waldtest
+		summary(coxph.result)$waldtest[3] %>% as.numeric
+		coxph.result$wald.test #wald test score
+	
+	#### HBV-delta
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBVDelta, data = IgA.df, method = "efron", robust = F)
+		summary(coxph.result)
+		summary(coxph.result)$logtest
+		summary(coxph.result)$logtest[3] %>% as.numeric
+		summary(coxph.result)$waldtest
+		summary(coxph.result)$waldtest[3] %>% as.numeric
+		coxph.result$wald.test #wald test score
+	
+	
+	#### Gender
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Gender, data = IgA.df, method = "efron", robust = F)
+		summary(coxph.result)
+		summary(coxph.result)$logtest
+		summary(coxph.result)$logtest[3] %>% as.numeric
+		summary(coxph.result)$waldtest
+		summary(coxph.result)$waldtest[3] %>% as.numeric
+		coxph.result$wald.test #wald test score
+	
+	
+	
+	#### SerumIgA3bin +Age + Fibrosis coxph
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA3bin + Age + Fibrosis, data = IgA.df, method = "efron", robust = F)
+		summary(coxph.result)
+		summary(coxph.result)$logtest
+		summary(coxph.result)$logtest[3] %>% as.numeric
+		summary(coxph.result)$waldtest
+		summary(coxph.result)$waldtest[3] %>% as.numeric
+		coxph.result$wald.test #wald test score
+
+
+	
+		#pie graph
+			library(ggsci)
+			color.vector <- pal_npg("nrc")(3) #requires ggsci package
+	
+			pie.df <- data.frame(
+				group = c("serum IgA (binned <150; 150-400; >=400)", "fibrosis F0/1;F2;F3;F4", "Age"),
+				value = c(pie.serumIgA3bin, pie.fibrosis, pie.age)
+			)
+			
+			p=ggplot(pie.df, aes(x="", y=value, fill=group))+
+				geom_bar(width = 1, stat = "identity") + 
+				coord_polar("y", start=0) +
+				theme_void() + scale_fill_manual(values=c(color.vector))
+			p
+
+#Akaike Information Criterion
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Fibrosis, data = IgA.df, method = "efron", robust = F)
+		coxph.result ;AIC(coxph.result)
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Fibrosis + Age  , data = IgA.df, method = "efron", robust = F)
+		coxph.result ;AIC(coxph.result)
+		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Fibrosis + SerumIgA3bin + Age , data = IgA.df, method = "efron", robust = F)
+		coxph.result ;AIC(coxph.result)		
+		AIC(coxph.result) #indien daalt is het beter bij multivarate cox regression
+		
+	predict.coxph <- predict(coxph.result)
+	IgA.df$predict <- predict.coxph
+
+
 #Kaplan-Meier curve ASF (Age/Serum IgA/Fibrosis) model: Age >=40 AND Fibrosis = F3/F4 AND serum IgA >150+ mg/dL  is high-risk
 
 	#stratify ASF: Age, Serum IgA and Fibrosis
@@ -142,161 +318,6 @@
 						scale_y_discrete(labels=c('high', 'low'))
 			p
 
-
-# Cox regression analysis 
-#### Age coxph
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Age, data = IgA.df, method = "efron", robust = F)
-	summary(coxph.result)
-	summary(coxph.result)$logtest
-	summary(coxph.result)$logtest[3] %>% as.numeric
-	summary(coxph.result)$waldtest
-	summary(coxph.result)$waldtest[3] %>% as.numeric
-	coxph.result$wald.test #wald test score
-	pie.3 <- coxph.result$wald.test #wald test score
-
-
-#### SerumIgA50 coxph
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA50, data = IgA.df, method = "efron", robust = F)
-	summary(coxph.result)
-	summary(coxph.result)$logtest
-	summary(coxph.result)$logtest[3] %>% as.numeric
-	summary(coxph.result)$waldtest
-	summary(coxph.result)$waldtest[3] %>% as.numeric
-	coxph.result$wald.test #wald test score
-	pie.1 <- coxph.result$wald.test #wald test score
-
-
-#### F3F4 Fibrosis coxph
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ F3F4, data = IgA.df, method = "efron", robust = F)
-	summary(coxph.result)
-	summary(coxph.result)$logtest
-	summary(coxph.result)$logtest[3] %>% as.numeric
-	summary(coxph.result)$waldtest
-	summary(coxph.result)$waldtest[3] %>% as.numeric
-	coxph.result$wald.test #wald test score
-	pie.2 <- coxph.result$wald.test #wald test score
-
-
-#### HIV
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HIV, data = IgA.df, method = "efron", robust = F)
-	summary(coxph.result)
-	summary(coxph.result)$logtest
-	summary(coxph.result)$logtest[3] %>% as.numeric
-	summary(coxph.result)$waldtest
-	summary(coxph.result)$waldtest[3] %>% as.numeric
-	coxph.result$wald.test #wald test score
-
-
-#### HCV
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HCV, data = IgA.df, method = "efron", robust = F)
-	summary(coxph.result)
-	summary(coxph.result)$logtest
-	summary(coxph.result)$logtest[3] %>% as.numeric
-	summary(coxph.result)$waldtest
-	summary(coxph.result)$waldtest[3] %>% as.numeric
-	coxph.result$wald.test #wald test score
-
-#### HBV
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBV, data = IgA.df, method = "efron", robust = F)
-	summary(coxph.result)
-	summary(coxph.result)$logtest
-	summary(coxph.result)$logtest[3] %>% as.numeric
-	summary(coxph.result)$waldtest
-	summary(coxph.result)$waldtest[3] %>% as.numeric
-	coxph.result$wald.test #wald test score
-
-#### HBV-HCV
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBVHCV, data = IgA.df, method = "efron", robust = F)
-	summary(coxph.result)
-	summary(coxph.result)$logtest
-	summary(coxph.result)$logtest[3] %>% as.numeric
-	summary(coxph.result)$waldtest
-	summary(coxph.result)$waldtest[3] %>% as.numeric
-	coxph.result$wald.test #wald test score
-
-#### HBV-delta
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBVDelta, data = IgA.df, method = "efron", robust = F)
-	summary(coxph.result)
-	summary(coxph.result)$logtest
-	summary(coxph.result)$logtest[3] %>% as.numeric
-	summary(coxph.result)$waldtest
-	summary(coxph.result)$waldtest[3] %>% as.numeric
-	coxph.result$wald.test #wald test score
-
-
-#### Gender
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Gender, data = IgA.df, method = "efron", robust = F)
-	summary(coxph.result)
-	summary(coxph.result)$logtest
-	summary(coxph.result)$logtest[3] %>% as.numeric
-	summary(coxph.result)$waldtest
-	summary(coxph.result)$waldtest[3] %>% as.numeric
-	coxph.result$wald.test #wald test score
-
-
-
-#### SerumIgA50 +Age + F3F4 Fibrosis coxph
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA50 + Age + F3F4, data = IgA.df, method = "efron", robust = F)
-	summary(coxph.result)
-	summary(coxph.result)$logtest
-	summary(coxph.result)$logtest[3] %>% as.numeric
-	summary(coxph.result)$waldtest
-	summary(coxph.result)$waldtest[3] %>% as.numeric
-	coxph.result$wald.test #wald test score
-
-	#pie graph
-		library(ggsci)
-		color.vector <- pal_npg("nrc")(3) #requires ggsci package
-
-		pie.df <- data.frame(
-			group = c("serum IgA (binned per 50 mg/dL)", "F3 or F4", "Age"),
-			value = c(pie.1, pie.2, pie.3)
-		)
-	
-	p=ggplot(pie.df, aes(x="", y=value, fill=group))+
-		geom_bar(width = 1, stat = "identity") + 
-		coord_polar("y", start=0) +
-		theme_void() + scale_fill_manual(values=c(color.vector))
-	p
-
-#Akaike Information Criterion
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ F3F4, data = IgA.df, method = "efron", robust = F)
-		coxph.result ;AIC(coxph.result)
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ F3F4 + Age  , data = IgA.df, method = "efron", robust = F)
-		coxph.result ;AIC(coxph.result)
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ F3F4 + SerumIgA50 + Age , data = IgA.df, method = "efron", robust = F)
-		coxph.result ;AIC(coxph.result)		
-		AIC(coxph.result) #indien daalt is het beter bij multivarate cox regression
-		
-	predict.coxph <- predict(coxph.result)
-	IgA.df$predict <- predict.coxph
-
-
-#AUROC serum IgA
-	library(pROC)
-
-	#AUROC SerumIgA	
-	roc.result <- roc(IgA.df$BinaryHCC, IgA.df$SerumIgA) #roc(category,predictor)
-	auc(roc.result)
-	plot(roc.result)
-
-	#AUROC SerumIgA50
-	roc.result <- roc(IgA.df$BinaryHCC, IgA.df$SerumIgA50) #roc(category,predictor)
-	auc(roc.result)
-	plot(roc.result)
-
-	#manual ROC cutoffs for IgA50
-		ROC.df <- IgA.df[order(IgA.df$SerumIgA),][,colnames(IgA.df) %in% c("SerumIgA","SerumIgA50","BinaryHCC")]
-		n.events <- sum(ROC.df$BinaryHCC)
-
-		for (i in 1:nrow(ROC.df)){
-			ROC.df$IgA50HCC[i] <- sum(ROC.df[ROC.df$SerumIgA50 == ROC.df$SerumIgA50[i],]$BinaryHCC)
-		}
-		
-		ROC.df <- ROC.df[!duplicated(as.numeric(ROC.df$SerumIgA50)),][,3:4] #only retain serumIgA50
-		
-		AUROC.table <- cbind(rbind(rep(0,2),ROC.df),roc.result$sensitivities,roc.result$specificities)
-		AUROC.table
 
 		
 
@@ -384,7 +405,6 @@
 						scale_y_discrete(labels=c('low', 'int.', 'high'))
 			p
 
-	
 	
 #KM curve AS2F model: Age >=40 AND F3/F4 AND >=400 mg/dL serum IgA is high-risk, >=40 Age AND F3/F4 AND 150<IgA<400 is intermediate-risk
 	#add stratification to data
