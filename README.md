@@ -14,7 +14,7 @@ These gene expression matrices should be formatted as .gct files. More info on g
 
 The headers of the .gct files are provided in data_files/collapsed_data. The processed data from the training set and validation set on GSE237332 can be pasted in these files in order to work.  
 
-The scRNA-seq data seurat object can be downloaded from Zenodo (DOI 10.5281/zenodo.10149894) as a .Rds file. It should be stored in data_files/scRNAseq_data 
+The scRNA-seq data seurat objects can be downloaded from Zenodo (DOI '10.5281/zenodo.11487047' and DOI '10.5281/zenodo.10149894') as a .Rds file. It should be stored in data_files/scRNAseq_data 
 
 In the output folder, all files will be stored that are created with this code and that are loaded in the different .R code modules. 
 
