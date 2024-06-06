@@ -124,11 +124,9 @@
 # project correlating genes on scRNAseq as module scores 
 ############################################################
 
-#load scRNAseq dataset of the liver 
-	#note: the .Rds file with the seurat object of 5 integrated human liver samples can be downloaded from https://zenodo.org/records/10149895 ; DOI 10.5281/zenodo.10149894
-	#note: is you use this data, please cite the original publication: MacParland et al. 2018 Nature Communications, https://doi.org/10.1038/s41467-018-06318-7
-
-	SO.integrated <- readRDS(file="data_files/scRNAseq_data/liver_scRNAseq.Rds")
+#load scRNAseq dataset of the liver (choose data set)
+	SO.integrated <- readRDS(file="data_files/scRNAseq_data/liver_scRNAseq.Rds") #note: the .Rds file with the seurat objects can be downloaded from https://zenodo.org/records/10149895 
+	SO.integrated <- readRDS(file="data_files/scRNAseq_data/2liver_Ramachandran_Nkongolo.Rds") #note: the .Rds file with the seurat objects can be downloaded from https://zenodo.org/records/11487048
 
 
 #calculate module scores
@@ -167,13 +165,6 @@
 			DefaultAssay(SO.integrated) <- "SCSIGN"
 	
 	###4. Visualise
-		#create color vector
-			library(ggsci)
-		
-			color.vector <- pal_npg("nrc")(10)
-			color.vector <- c(color.vector,"brown","khaki","orange3","orchid2")
-			color.vector.alpha2 <- alpha(color.vector,0.2)						
-		
 		#Serum IgA correlated
 			feat = rownames(SO.integrated)[1]
 			
@@ -186,8 +177,7 @@
 				quant90 <- quantile(feat.values,0.90)
 			
 			#plot
-				p=VlnPlot(SO.integrated, feat, cols= color.vector, pt.size=0.2) + 
-					#stat_summary(fun.y = median, geom='point', size = 10, colour = "black", shape = 95)+
+				p=VlnPlot(SO.integrated, feat, pt.size=0.2) + 
 					guides(fill = guide_legend(override.aes = list(size=4), ncol=1)) +
 					geom_hline(yintercept = c(quant10, quant90), linetype='dashed', col = 'red', linewidth=1) +
 					theme(axis.title.x=element_blank()) +
@@ -207,8 +197,7 @@
 				quant90 <- quantile(feat.values,0.90)
 			
 			#plot
-				p=VlnPlot(SO.integrated, feat, cols= color.vector, pt.size=0.2) + 
-					#stat_summary(fun.y = median, geom='point', size = 10, colour = "black", shape = 95)+
+				p=VlnPlot(SO.integrated, feat, pt.size=0.2) + 
 					guides(fill = guide_legend(override.aes = list(size=4), ncol=1)) +
 					geom_hline(yintercept = c(quant10, quant90), linetype='dashed', col = 'red', linewidth=1) +
 					theme(axis.title.x=element_blank()) +
