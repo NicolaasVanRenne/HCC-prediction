@@ -45,7 +45,6 @@
 
 
 		IgA.markers <- IgA.markers[1:20]
-		#IgA.markers <- c("AL928768.3","IGHA2","MZB1","DERL3","TNFRSF17","JCHAIN","CPNE5","POU2AF1","IGHA1", "FCRL5", "JSRP1", "IGLC3", "ABCB9","RP11-16E12.2","CD79A","ITM2C","PNOC","IGLV6-57","SPAG4","FKBP11","CD27","PIM2")       
 
 	my.markers <- IgA.markers[IgA.markers %in% rownames(exp.df)]
 	exp.df <- exp.df[rownames(exp.df) %in% my.markers,] #filter markers for those that are not in the gene expression database
