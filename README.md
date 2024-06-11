@@ -28,10 +28,9 @@ In the output folder, all files will be stored that are created with this code a
 6) reproduce_scRNAseq_2liver.R (original data matrices can be downloaded from NCBI GEO as described in Ramachandran 2019 Nature and Nkongolo 2023 J Clin Invest. Output of this code can be retrieved from Zenodo as described above) 
 7) reproduce_scRNAseq.R (original data matrices can be requested to S. MacParland to reproduce. Output of this code can be retrieved from Zenodo as described above)
 8) signatures_scRNAseq.R  
-9) single_cell_deconvolution.R
-10) IHC_staining_heatmap.R
-11) serumIgA_bulkRNA_correlation.R
-12) serum_cohort_IgA.R
+9) IHC_staining_heatmap.R
+10) serumIgA_bulkRNA_correlation.R
+11) serum_cohort_IgA.R
     
 ## generating a clinical gene signature on your own data
 You can also use this code to create a gene signature with your own gene expression data. Gene expression file should be .gct format, and file names can be changed in the calculacte_signature.R code.
