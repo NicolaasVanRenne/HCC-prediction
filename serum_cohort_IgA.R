@@ -4,24 +4,32 @@
 #
 ##########################################################
 
-#set working directory
+save.plots=FALSE
+
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(patchwork)
+library(survival)
+library(survminer)
+
+#set dir
 	setwd("C:/my_dir")
 
-#load libraries
-	library(ggplot2)
-	library(dplyr)
-	library(lubridate)
-	library(patchwork)
-	library(survival)
-	library(survminer)
-
 #load databases
-	IgA.df 	<- read.table(file="data_files/serum_data/serum_cohort.txt", sep="\t", header=T)
-	
-#add meta data for Cox regression
-	#add serum IgA binned per 50 mg/dL (0-49 = 0, 50-99 = 1, 100-149 = 2 etc..)
-		IgA.df$SerumIgA50 <- floor(IgA.df$SerumIgA / 50)
-	
+	IgA.df 	<- read.table(file="data_files/serum_data/serum_cohort.txt", sep="\t", header=T) 
+
+#preprocess data
+	{
+	#add fibrosis bin F2 = 0; F3 = 1; F4 = 2
+		fibrosis.bin <- rep(0, nrow(IgA.df))
+		for(i in seq_along(fibrosis.bin)){
+			if(IgA.df$Fibrosis[i] == "F2")	 { fibrosis.bin[i] <-0 }
+			if(IgA.df$Fibrosis[i] == "F3")	 { fibrosis.bin[i] <-1 }
+			if(IgA.df$Fibrosis[i] == "F4")	 { fibrosis.bin[i] <-2 }
+		}
+		IgA.df$fibrosis.bin <- fibrosis.bin
+
 	#transform censored time in years
 		transform.censoredtime= "yes" #"yes" or "no"
 		if(transform.censoredtime == "yes"){
@@ -56,183 +64,199 @@
 			if(IgA.df$Virus[i] == "HBV-HDV"){ IgA.df$HBVDelta[i] <- "yes" }
 			if(IgA.df$Virus[i] != "HBV-HDV"){ IgA.df$HBVDelta[i] <- "no" }
 		}
+	}
 
-	#add fibrosis bin F0/F1 = 0; F2 = 1; F3 = 2; F4 = 3
-		fibrosis.bin <- rep(0, nrow(IgA.df))
-		for(i in seq_along(fibrosis.bin)){
-			if(IgA.df$Fibrosis[i] == "F0/F1"){ fibrosis.bin[i] <-0 }
-			if(IgA.df$Fibrosis[i] == "F2")	 { fibrosis.bin[i] <-1 }
-			if(IgA.df$Fibrosis[i] == "F3")	 { fibrosis.bin[i] <-2 }
-			if(IgA.df$Fibrosis[i] == "F4")	 { fibrosis.bin[i] <-3 }
-		}
-		IgA.df$fibrosis.bin <- fibrosis.bin
-	
-	#add serum IgA (binned in three categories based on AUROC curves: <=150; >150 & < 400 ; >= 400 mg dL)
-		bin.3 <- rep(0, nrow(IgA.df))
-		for(i in seq_along(bin.3)){
-			if(IgA.df$SerumIgA[i] <= 150){ bin.3[i] <-0 }
-			if(IgA.df$SerumIgA[i] > 150 & IgA.df$SerumIgA[i] < 400){ bin.3[i] <-1 }
-			if(IgA.df$SerumIgA[i] > 400){ bin.3[i] <-2 }
-		}
-		IgA.df$SerumIgA.bin3 <- bin.3
-	
-# Cox regression analysis: UNIVARIATE
-######################################
-	#### Gender
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Gender, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score
+#patient table
+	#number of patients:
+		nrow(IgA.df)
+	#Age median, IQR 
+		quantile(IgA.df$Age)
+	#serum IgA, IQR 
+		quantile(IgA.df$SerumIgA)
+	#follow-up, IQR
+		quantile(IgA.df$CensoredTime)
+	#HCC number
+		sum(IgA.df$BinaryHCC)
+		100*table(IgA.df$BinaryHCC)/nrow(IgA.df)
+	#Virus
+		#HCV
+			table(IgA.df$HCV)
+			100*table(IgA.df$HCV)/nrow(IgA.df)
+		#HBV
+			table(IgA.df$HBV)
+			100*table(IgA.df$HBV)/nrow(IgA.df)
+		#HBV-HCV
+			table(IgA.df$HBVHCV)
+			100*table(IgA.df$HBVHCV)/nrow(IgA.df)
+		#HBV-Delta
+			table(IgA.df$HBVDelta)
+			100*table(IgA.df$HBVDelta)/nrow(IgA.df)
+
+		#Gender
+			table(IgA.df$Gender)
+			100*table(IgA.df$Gender)/nrow(IgA.df)
+		#Fibrosis
+			table(IgA.df$fibrosis.bin)
+			100*table(IgA.df$fibrosis.bin)/nrow(IgA.df)
+		#Diagnostic
+			table(IgA.df$Diagnostic)
+			100*table(IgA.df$Diagnostic)/nrow(IgA.df)
+
+
+
+# Cox regression analysis 
+{		
+	#Univariate cox regression
+		#Age 
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Age, data = IgA.df, method = "efron", robust = F)
+			summary(coxph.result)
+			wald.score.age 	<- as.numeric(coxph.result$wald.test) #wald test score
+			wald.p.age 		<- as.numeric(summary(coxph.result)$waldtest[3]) #wald test score p
+			
+		#Serum IgA
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA, data = IgA.df, method = "efron", robust = F)
+			summary(coxph.result)
+			wald.score.serumIgA 	<- as.numeric(coxph.result$wald.test) #wald test score
+			wald.p.serumIgA 		<- as.numeric(summary(coxph.result)$waldtest[3]) #wald test score p
+
+		#Fibrosis coxph
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ fibrosis.bin, data = IgA.df, method = "efron", robust = F)
+			summary(coxph.result)
+			wald.score.fibrosis 	<- as.numeric(coxph.result$wald.test) #wald test score
+			wald.p.fibrosis 		<- as.numeric(summary(coxph.result)$waldtest[3]) #wald test score p
 		
-	#### HBV
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBV, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score		
+		#HIV
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HIV, data = IgA.df, method = "efron", robust = F)
+			summary(coxph.result)
+			wald.score.HIV 	<- as.numeric(coxph.result$wald.test) #wald test score
+			wald.p.HIV 		<- as.numeric(summary(coxph.result)$waldtest[3]) #wald test score p
 
+		#HCV
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HCV, data = IgA.df, method = "efron", robust = F)
+			summary(coxph.result)
+			wald.score.HCV 	<- as.numeric(coxph.result$wald.test) #wald test score
+			wald.p.HCV 		<- as.numeric(summary(coxph.result)$waldtest[3]) #wald test score p
 	
-	#### HCV
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HCV, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score
+		#HBV
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBV, data = IgA.df, method = "efron", robust = F)
+			summary(coxph.result)
+			wald.score.HBV 	<- as.numeric(coxph.result$wald.test) #wald test score
+			wald.p.HBV 		<- as.numeric(summary(coxph.result)$waldtest[3]) #wald test score p
 	
-	#### HBV-HCV
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBVHCV, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score
+		#HBV-HCV
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBVHCV, data = IgA.df, method = "efron", robust = F)
+			summary(coxph.result)
+			wald.score.HBVHCV 	<- as.numeric(coxph.result$wald.test) #wald test score
+			wald.p.HBVHCV 		<- as.numeric(summary(coxph.result)$waldtest[3]) #wald test score p
 	
-	#### HBV-delta
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBVDelta, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score
-
-	#### HIV
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HIV, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score	
+		#HBV-delta
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ HBVDelta, data = IgA.df, method = "efron", robust = F)
+			summary(coxph.result)
+			wald.score.HBVDelta 	<- as.numeric(coxph.result$wald.test) #wald test score
+			wald.p.HBVDelta 		<- as.numeric(summary(coxph.result)$waldtest[3]) #wald test score p
 	
-	#### Fibrosis (binned in F0/F1;F2;F3;F4) coxph
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ fibrosis.bin, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score	
-	
-	#### Age coxph
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Age, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score
+		#Gender
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ Gender, data = IgA.df, method = "efron", robust = F)
+			summary(coxph.result)
+			wald.score.gender 	<- as.numeric(coxph.result$wald.test) #wald test score
+			wald.p.gender 		<- as.numeric(summary(coxph.result)$waldtest[3]) #wald test score p
+			
+			#Create bar graph for Univariate Wald test scores
+				library(ggplot2)
+				data <- data.frame(
+				Variable = c("Gender", "HBV", "HCV", "HBV-HDV", "HIV", "Age", "Fibrosis",  "Serum IgA"),
+				Wald_Test_Score = c(wald.score.gender, wald.score.HBV, wald.score.HCV, wald.score.HBVDelta, wald.score.HIV, wald.score.age, wald.score.fibrosis,  wald.score.serumIgA),
+				Wald_Test_P = c(wald.p.gender, wald.p.HBV, wald.p.HCV, wald.p.HBVDelta, wald.p.HIV, wald.p.age, wald.p.fibrosis,  wald.p.serumIgA)
+				)
+				data$P_value_label <- ifelse(data$Wald_Test_P >= 0.05, "NS", round(data$Wald_Test_P,6))
+				
+			# Create the bar chart HORIZONTAL
+				data$Variable <- factor(data$Variable, levels = rev(data$Variable))
+				p=ggplot(data, aes(x = Wald_Test_Score, y = Variable)) +
+					geom_bar(stat = "identity", fill = "lightgrey", color = "black", width=0.8) +
+					#geom_text(aes(label = P_value_label, x = Wald_Test_Score + 0.2),hjust = 0, size = 8, color = "black")+
+					geom_text(aes(label = P_value_label, x = Wald_Test_Score + 2))+
+					labs(title = NULL, x = "Wald Test Score (univariate)", y = NULL) +
+					theme_classic() +
+					theme(
+						axis.title.x = element_text(size = 12, color="black"),
+						axis.text.x = element_text(size = 12, color="black"),
+						axis.text.y = element_text(size = 12, color="black"),
+						plot.title = element_text(size = 12, color="black", hjust = 0.5)
+					) +	
+					scale_x_continuous(limits = c(0, max(data$Wald_Test_Score)+5), expand = c(0, 0))  # Ensure bars start at the origin
+					#scale_x_continuous(expand = c(0, 0))  # Ensure bars start at the origin
+				p
+					if(save.plots==TRUE){  ggsave(p, file= "output/plots/wald_score_univariate_F2F3F4.tiff", width = 5, height=2)	}	
+					if(save.plots==TRUE){  ggsave(p, file= "output/plots/wald_score_univariate_F2F3F4_large.tiff", width = 4, height=4)	}	
+					
+	#Multivariate cox regression
+		#SerumIgA + Age + Fibrosis coxph
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA + Age + fibrosis.bin, data = IgA.df, method = "efron", robust = F)
+			summary(coxph.result)
+		
+		#SerumIgA + Fibrosis coxph
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA + fibrosis.bin, data = IgA.df, method = "efron", robust = F)
+			summary(coxph.result)
+			summary(coxph.result)$waldtest[3]
+}
 
-	#### Serum IgA coxph
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA50, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score
 
-	#### Serum IgA (binned per 50 mg/dL) coxph
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA50, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score
-
-	#### Serum IgA (binned in three categories based on AUROC curves: <=150; >150 & < 400 ; >= 400 mg dL)
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA.bin3, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score
-
-
-# Cox regression analysis: MULTIVARIATE
-#######################################	
-	
-	#### Age + Fibrosis (binned in F0/F1;F2;F3;F4) + Serum IgA (binned in three categories based on AUROC curves: <=150; >150 & < 400 ; >= 400 mg dL)
-		coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA.bin3 + Age + fibrosis.bin, data = IgA.df, method = "efron", robust = F)
-		summary(coxph.result)
-		summary(coxph.result)$logtest
-		summary(coxph.result)$logtest[3] %>% as.numeric
-		summary(coxph.result)$waldtest
-		summary(coxph.result)$waldtest[3] %>% as.numeric
-		coxph.result$wald.test #wald test score
-	
-
-# Akaike Information Criterion
-################################
-	#lower AIC is better
+#Akaike Information Criterion 
 	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ fibrosis.bin, data = IgA.df, method = "efron", robust = F)
 	coxph.result ;AIC(coxph.result)
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ fibrosis.bin + Age  , data = IgA.df, method = "efron", robust = F)
+	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ fibrosis.bin + SerumIgA  , data = IgA.df, method = "efron", robust = F)
 	coxph.result ;AIC(coxph.result)
-	coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ fibrosis.bin + SerumIgA.bin3 + Age , data = IgA.df, method = "efron", robust = F)
-	coxph.result ;AIC(coxph.result)		
-	AIC(coxph.result) 
-				
-		
-
-
-# AUROC serum IgA
-##################
+	
+	
+#AUROC
 	library(pROC)
-
-
-	#AUROC SerumIgA50
-		roc.result <- roc(IgA.df$BinaryHCC, IgA.df$SerumIgA50) #roc(category,predictor)
-		auc(roc.result)
-		plot(roc.result)
-
-	#define serum IgA thresholds by AUROC
-		ROC.df <- IgA.df[order(IgA.df$SerumIgA),][,colnames(IgA.df) %in% c("SerumIgA","SerumIgA50","BinaryHCC")]
-		n.events <- sum(ROC.df$BinaryHCC)
-
-		for (i in 1:nrow(ROC.df)){
-			ROC.df$IgA50HCC[i] <- sum(ROC.df[ROC.df$SerumIgA50 == ROC.df$SerumIgA50[i],]$BinaryHCC)
-		}
+	
+	#Single AUROCs
+		#1. Serum IgA 
+			roc.IgA <- roc(IgA.df$BinaryHCC, IgA.df$SerumIgA)
+			auc(roc.IgA)
+			plot(roc.IgA)		
 		
-		ROC.df <- ROC.df[!duplicated(as.numeric(ROC.df$SerumIgA50)),][,3:4] #only retain serumIgA50
+		#2. Fibrosis.bin
+			roc.fibrosis <- roc(IgA.df$BinaryHCC, IgA.df$fibrosis.bin)
+			auc(roc.fibrosis)
+			plot(roc.fibrosis)			
 		
-		AUROC.table <- cbind(rbind(rep(0,2),ROC.df),roc.result$sensitivities,roc.result$specificities)
-		AUROC.table
+	
+	#Combined AUROCs
+		#Serum IgA + Fibrosis.bin
+			coxph.result <- coxph(formula = Surv(CensoredTime, BinaryHCC) ~ SerumIgA + fibrosis.bin  , data = IgA.df, method = "efron", robust = F)
+			prediction <- predict(coxph.result)
+			category <- IgA.df$BinaryHCC
+			roc.sf <- roc(category, prediction)
+			auc(roc.sf)
+			plot(roc.sf)		
 
-		
 
-# Create Kaplan Meier curves Serum IgA only
-##############################################
+		# Plotting both ROC curves on the same plot
+			plot(roc.IgA, col = "black", main = "ROC for Serum IgA and fibrosis")
+			plot(roc.fibrosis, col = "purple", add = TRUE)
+			plot(roc.sf, col = "orange", add = TRUE)
+			# Adding legend
+			legend("bottomright", legend = c("Serum IgA", "Fibrosis", "Serum IgA + Fibrosis"), col = c("black", "purple", "orange"), lwd = 2)
+
+		#manual ROC cutoffs for IgA
+			ROC.df <- IgA.df[order(IgA.df$SerumIgA),][,colnames(IgA.df) %in% c("SerumIgA","BinaryHCC")]
+			n.events <- sum(ROC.df$BinaryHCC)
+	
+			for (i in 1:nrow(ROC.df)){
+				ROC.df$IgAHCC[i] <- sum(ROC.df[ROC.df$SerumIgA == ROC.df$SerumIgA[i],]$BinaryHCC)
+			}
+			
+			ROC.df <- ROC.df[!duplicated(as.numeric(ROC.df$SerumIgA)),] #remove duplicate values
+			roc.result <- roc(IgA.df$BinaryHCC, IgA.df$SerumIgA) #roc(category,predictor)
+			
+			AUROC.table <- cbind(rbind(rep(0,2),ROC.df),roc.result$sensitivities,roc.result$specificities)
+			AUROC.table
+			
+			
+#Create Kaplan Meier curves Serum IgA only
 	#set new cutoff serum IgA, cutoffs based on AUROC curves 
 		cutofflow = 150 #serumIgA cutoff, lower or equal than this is low SerumIgACls
 		cutoffhigh = 400 #serumIgA cutoff, higher or equal than this is high SerumIgACls 
@@ -245,7 +269,7 @@
 			for(i in 1:nrow(IgA.df)){ if(IgA.df$SerumIgA[i] < cutoffhigh & IgA.df$SerumIgA[i] > cutofflow){ SerumIgACls[i] <- "intermediate" }}
 		IgA.df$SerumIgACls <- SerumIgACls
 
-	#create data frame for Kaplan-Meier	  
+	#read clinical data		  
 		km.df <- cbind(IgA.df$BinaryHCC, IgA.df$CensoredTime, IgA.df$SerumIgACls)
 		colnames(km.df) <- c("HCC","time","SerumIgA")
 		km.df <- as.data.frame(km.df)
@@ -287,35 +311,66 @@
 					print(paste("This KM curve will be cut when less than",n.at.risk.cutoff,"patients are at risk."))
 					print(paste("This KM curve will be cut at timepoint",cutoff.time.x.axis))
 				}
-		
-		#visualise kaplan meier plot
-			p=ggsurvplot(survfit.result,
-				fun= "event",
-				pval = paste0("high VS low p=",pval.low.vs.high,"\n", "high VS int. p=",pval.int.vs.high,"\n" , "int. VS low p=",pval.low.vs.int ),   
-				pval.coord = c(0,0.90), 
-				pval.size=7,
-				conf.int = FALSE,
-				risk.table = TRUE, risk.table.fontsize=6,
-				risk.table.height=0.3,
-				risk.table.y.text = TRUE,
-				font.x=20,
-				font.y=20,
-				font.tickslab=20,
-				palette = c("tomato", "darkgrey","mediumblue"),
-				xlim = c(0,cutoff.time.x.axis), 
-				break.time.by=3,
-				legend = 'none',
-				xlab="Time (years)",
-				ylab="HCC incidence"
-				)
-				p$table <- p$table + 
-						theme(axis.text.x = element_text(size = 20)) +
-						theme(axis.title.x = element_text(size = 20)) +
-						theme(axis.title.y = element_text(size = 20)) + 
-						ylab("HCC risk") + 
-						scale_y_discrete(labels=c('low', 'int.', 'high'))
-			p
-
+	
+				p=ggsurvplot(survfit.result,
+					fun= "event",
+					pval = paste0("high VS low p=",pval.low.vs.high,"\n", "high VS int. p=",pval.int.vs.high,"\n" , "int. VS low p=",pval.low.vs.int ),   
+					pval.coord = c(0,0.50), 
+					pval.size=7,
+					conf.int = FALSE,
+					risk.table = TRUE, risk.table.fontsize=6,
+					risk.table.height=0.3,
+					risk.table.y.text = TRUE,
+					font.x=20,
+					font.y=20,
+					font.tickslab=20,
+					palette = c("tomato", "darkgrey","mediumblue"),
+					xlim = c(0,cutoff.time.x.axis), 
+					break.time.by=3,
+					legend = 'none',
+					xlab="Time (years)",
+					ylab="HCC incidence"
+					)
+					p$table <- p$table + 
+							theme(axis.text.x = element_text(size = 20)) +
+							theme(axis.title.x = element_text(size = 20)) +
+							theme(axis.title.y = element_text(size = 20)) + 
+							ylab("HCC risk") + 
+							scale_y_discrete(labels=c('low', 'int.', 'high'))
+					p$plot <- p$plot + geom_vline(xintercept = cutoff.time.x.axis, linetype = "dashed", color = "red", size = 1)# Modify the main plot to include a vertical line
+				p
+				if(save.plots==TRUE){  tiff('output/plots/KM_serumIgA_n106.tiff', units="in", width=5, height=7, res=300, compression = 'lzw');print(p);dev.off()  }
+	
+				p=ggsurvplot(survfit.result,
+					fun= "event",
+					#pval = paste0("high VS low p=",pval.low.vs.high,"\n", "high VS int. p=",pval.int.vs.high,"\n" , "int. VS low p=",pval.low.vs.int ),   
+					#pval.coord = c(0,0.90), 
+					#pval.size=7,
+					conf.int = FALSE,
+					risk.table = TRUE, risk.table.fontsize=6,
+					risk.table.height=0.3,
+					risk.table.y.text = TRUE,
+					font.x=20,
+					font.y=20,
+					font.tickslab=20,
+					palette = c("tomato", "darkgrey","mediumblue"),
+					xlim = c(0,cutoff.time.x.axis), 
+					break.time.by=3,
+					legend = 'none',
+					xlab="Time (years)",
+					ylab="HCC incidence"
+					)
+					p$table <- p$table + 
+							theme(axis.text.x = element_text(size = 20)) +
+							theme(axis.title.x = element_text(size = 20)) +
+							theme(axis.title.y = element_text(size = 20)) + 
+							ylab("HCC risk") + 
+							scale_y_discrete(labels=c('low', 'int.', 'high'))
+				p
+				if(save.plots==TRUE){  tiff('output/plots/KM_serumIgA_noP_n106.tiff', units="in", width=5, height=7, res=300, compression = 'lzw');print(p);dev.off()  }
+	
+	#FIND HCC INCIDENCE AT 3 YEARS
+		summary(survfit.result, 3)
 	
 
 
