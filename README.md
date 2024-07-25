@@ -48,7 +48,6 @@ All code was written for R, and can be easily run in the R environment. Installa
 
 ## System requirements 
 * R version >= 4.0.3. 
-* R packages: survival, data.table, survminer, patchwork, dplyr, ggrepel, ggplot2, circlize, ComplexHeatmap, Seurat, harmony, ggsci, RColorBrewer, MuSiC, Biobase, ggpubr, lubridate, pROC
 
 The code was run in R x64 4.0.3 installed on operating system Windows 10
 
