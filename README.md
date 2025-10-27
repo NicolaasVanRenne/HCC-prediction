@@ -14,7 +14,7 @@ These gene expression matrices should be formatted as .gct files. More info on g
 
 The headers of the .gct files are provided in data_files/collapsed_data. The processed data from the training set and validation set on GSE237332 can be pasted in these files in order to work.  
 
-The scRNA-seq data seurat objects can be downloaded from Zenodo (DOI '10.5281/zenodo.11487047' and DOI '10.5281/zenodo.10149894') as .Rds files. They should be stored in data_files/scRNAseq_data 
+The scRNA-seq data seurat objects can be downloaded from Zenodo (DOI '10.5281/zenodo.11487047', DOI '10.5281/zenodo.10149894' and DOI '10.5281/zenodo.13643040') as .Rds files. They should be stored in data_files/scRNAseq_data 
 
 In the output folder, all files will be stored that are created with this code and that are loaded in the different .R code modules. 
 
@@ -25,12 +25,13 @@ In the output folder, all files will be stored that are created with this code a
 3) volcanoplot_cox_scores.R
 4) volcanoplot_diffexp.R
 5) heatmaps_NTP.R
-6) reproduce_scRNAseq_2liver.R (original data matrices can be downloaded from NCBI GEO as described in Ramachandran 2019 Nature and Nkongolo 2023 J Clin Invest. Output of this code can be retrieved from Zenodo as described above) 
-7) reproduce_scRNAseq.R (original data matrices can be requested to S. MacParland to reproduce. Output of this code can be retrieved from Zenodo as described above)
-8) signatures_scRNAseq.R  
-9) IHC_staining_heatmap.R
-10) serumIgA_bulkRNA_correlation.R
-11) serum_cohort_IgA.R
+6) odds_ratios_and_roc_curves.R
+7) reproduce_scRNAseq_2liver.R (original data matrices can be downloaded from NCBI GEO as described in Ramachandran 2019 Nature and Nkongolo 2023 J Clin Invest. Output of this code can be retrieved from Zenodo as described above) 
+8) reproduce_scRNAseq.R (original data matrices can be requested to S. MacParland to reproduce. Output of this code can be retrieved from Zenodo as described above)
+9) reproduce_scRNAseq_treatment_naive_HBV.R (data as described in Van Renne et al. 2025 PLoS One. Output of this code can be retrieved from Zenodo as described above)
+10) signatures_scRNAseq.R  
+11) IHC_staining_heatmap.R
+12) serumIgA_bulkRNA_correlation.R
     
 ## generating a clinical gene signature on your own data
 You can also use this code to create a gene signature with your own gene expression data. Gene expression file should be .gct format, and file names can be changed in the calculacte_signature.R code.
