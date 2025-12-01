@@ -67,9 +67,34 @@ data_val <- full_join(meta_val, data_pred_val, by = c("SubjectName" = "sample.na
 
 ## Training data
 
+# Fit model
 model_train <- glm(HCC_event ~ prognosis, data = data_train, family = binomial)
+
+# Results
 summary(model_train)
+
+# Results based on Wald test
 exp(coef(model_train))  # odds ratios
+exp(confint.default(model_train)) # confidence intervals
+coef(summary(model_train))[,4] # p-values
+
+# Results based on profile likelihood
+exp(coef(model_train))  # odds ratios
+exp(confint(model_train)) # confidence intervals
+anova(model_train, test = "LRT") # p-value for prognosis overall
+# p-values per prognosis category based on likelihoods
+# - for poor vs good
+data_sub <- subset(data_train, prognosis %in% c("good", "poor"))
+data_sub$prognosis <- droplevels(data_sub$prognosis)
+model_train_sub <- glm(HCC_event ~ prognosis, family = binomial, data = data_sub)
+anova(model_train_sub, test = "LRT")
+exp(confint(model_train_sub))
+# - for intermediate vs good
+data_sub <- subset(data_train, prognosis %in% c("good", "intermediate"))
+data_sub$prognosis <- droplevels(data_sub$prognosis)
+model_train_sub <- glm(HCC_event ~ prognosis, family = binomial, data = data_sub)
+anova(model_train_sub, test = "LRT")
+exp(confint(model_train_sub))
 
 # Outcome table
 results_tbl <- model_train %>%
@@ -89,9 +114,34 @@ if (savePlots == T) {
 
 ## Validation data
 
+# Fit model
 model_val <- glm(HCC_event ~ prognosis, data = data_val, family = binomial)
+
+# Results
 summary(model_val)
+
+# Results based on Wald test
 exp(coef(model_val))  # odds ratios
+exp(confint.default(model_val)) # confidence intervals
+coef(summary(model_val))[,4] # p-values
+
+# Results based on profile likelihood
+exp(coef(model_val))  # odds ratios
+exp(confint(model_val)) # confidence intervals
+anova(model_val, test = "LRT") # p-value for prognosis overall
+# p-values per prognosis category based on likelihoods
+# - for poor vs good
+data_sub <- subset(data_val, prognosis %in% c("good", "poor"))
+data_sub$prognosis <- droplevels(data_sub$prognosis)
+model_val_sub <- glm(HCC_event ~ prognosis, family = binomial, data = data_sub)
+anova(model_val_sub, test = "LRT")
+exp(confint(model_val_sub))
+# - for intermediate vs good
+data_sub <- subset(data_val, prognosis %in% c("good", "intermediate"))
+data_sub$prognosis <- droplevels(data_sub$prognosis)
+model_val_sub <- glm(HCC_event ~ prognosis, family = binomial, data = data_sub)
+anova(model_val_sub, test = "LRT")
+exp(confint(model_val_sub))
 
 # Outcome table
 results_tbl <- model_val %>%
