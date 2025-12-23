@@ -134,7 +134,7 @@
 		
 	#Publication quality volcano plot
 			#load poor and good prognosis genes
-				signature.df <- read.delim(file="E:/VIROLOGY/Antwerpen/ThomasVWproject/GitHub/output/2_calculate_signature/training_56_RPM_filtered_signature_result_ordered.txt",header=T,check.names=F)		
+				signature.df <- read.delim(file="output/training_RPM_filtered_signature_result_ordered.txt",header=T,check.names=F)		
 				poor.genes <- signature.df[signature.df$statistic > 0, 1]
 				good.genes <- signature.df[signature.df$statistic < 0, 1]
 				
@@ -201,4 +201,5 @@
 								show.legend=FALSE
 							) 
 					p
+
 		
