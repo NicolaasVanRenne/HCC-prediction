@@ -67,8 +67,8 @@
 	
 	input.filename.gct="data_files/collapsed_data/GSE237330_training_RPM.gct" 	#gene expression file in gct format
 	input.filename.clinical="data_files/meta_data/training_clinical_HCC.txt" # .txt file with time and events
-	output.file = "training_RPM_filtered_signature"									#output file name
-	
+	output.file = "output/training_RPM_filtered_signature"									#output folder and file name
+	 
 	set.p.value = 0.1 #p.value cutoff for LOOCV
 	
 	#set random seed version to old (R version < 3.6) or new (R version > 3.6)
@@ -1105,4 +1105,5 @@
 	write.table(df.result.ordered, file=paste0(output.file,"_result_ordered.txt"), quote=F, row.names=F, sep="\t")
 
 }
+
 
