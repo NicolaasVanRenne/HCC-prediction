@@ -784,7 +784,7 @@
 
 #set input files
 	input.exp.filename      = "data_files/collapsed_data/GSE237331_validation_RPM.gct"    #gct file of gene expression 
-	input.features.filename = "training_RPM_filtered_signature_result_ordered.txt" #.txt file with weighted genes created by calculate_signature.R
+	input.features.filename = "output/training_RPM_filtered_signature_result_ordered.txt" #.txt file with weighted genes created by calculate_signature.R
 	output.name             = "validation_NTP"
 	input.meta.data     	= "data_files/meta_data/validation_clinical_HCC.txt"
 
@@ -1494,5 +1494,6 @@
 					theme(axis.title.y = element_text(size = 20)) + ylab("Prognosis") + 
 					scale_y_discrete(labels=c('poor', 'intermediate', 'good'))
 				p
+
 
 
