@@ -15,6 +15,8 @@ library(gt)
 library(rms)
 library(flextable)
 library(officer)
+library(ggplot2)
+library(pagedown)
 
 
 ### Settings ###
@@ -88,6 +90,7 @@ data_sub <- subset(data_train, prognosis %in% c("good", "poor"))
 data_sub$prognosis <- droplevels(data_sub$prognosis)
 model_train_sub <- glm(HCC_event ~ prognosis, family = binomial, data = data_sub)
 anova(model_train_sub, test = "LRT")
+p_train_poor <- anova(model_train_sub, test = "LRT")["prognosis","Pr(>Chi)"]
 exp(confint(model_train_sub))
 # - for intermediate vs good
 data_sub <- subset(data_train, prognosis %in% c("good", "intermediate"))
@@ -95,22 +98,54 @@ data_sub$prognosis <- droplevels(data_sub$prognosis)
 model_train_sub <- glm(HCC_event ~ prognosis, family = binomial, data = data_sub)
 anova(model_train_sub, test = "LRT")
 exp(confint(model_train_sub))
+p_train_inter <- anova(model_train_sub, test = "LRT")["prognosis","Pr(>Chi)"]
 
 # Outcome table
 results_tbl <- model_train %>%
   tbl_regression(
     exponentiate = TRUE,
-  ) %>%
+    pvalue_fun = function(x) {
+      vapply(x, function(p) {
+        if (!is.na(p) & p < 0.001) {
+          exp <- floor(log10(abs(p)))
+          base <- round(p / 10^exp, 3)
+          paste0(base, "*10^", exp)
+        } else {
+          as.character(round(p, 3))
+        }
+      }, character(1))
+    }
+  )
+results_tbl[["table_body"]][["p.value"]] <- c(NA, NA, p_train_inter, p_train_poor)
+results_tbl <- results_tbl %>%
   bold_labels() %>%
-  modify_caption("**Training model: regression results**")
-
+  modify_caption("Training model: regression results")
+results_tbl <- results_tbl %>%
+  modify_abbreviation("")
 results_tbl
 
 if (savePlots == T) {
   results_tbl_docx <- results_tbl %>%
     as_flex_table() %>%
     flextable::save_as_docx(path = "model_train_oddsratio.docx")
+  
+  ft <- results_tbl %>%
+    as_flex_table()
+  ft <- flextable::delete_part(ft, part = "footer")
+  ft <- flextable::set_caption(
+    ft,
+    caption = flextable::as_paragraph(
+      flextable::as_b("Training model: regression results")
+    )
+  )
+  ft %>%
+    flextable::save_as_html(path = "model_train_oddsratio.html")
+  pagedown::chrome_print(
+    "model_train_oddsratio.html",
+    output = "model_train_oddsratio.pdf"
+  )
 }
+
 
 ## Validation data
 
@@ -136,27 +171,56 @@ data_sub$prognosis <- droplevels(data_sub$prognosis)
 model_val_sub <- glm(HCC_event ~ prognosis, family = binomial, data = data_sub)
 anova(model_val_sub, test = "LRT")
 exp(confint(model_val_sub))
+p_val_poor <- anova(model_val_sub, test = "LRT")["prognosis","Pr(>Chi)"]
 # - for intermediate vs good
 data_sub <- subset(data_val, prognosis %in% c("good", "intermediate"))
 data_sub$prognosis <- droplevels(data_sub$prognosis)
 model_val_sub <- glm(HCC_event ~ prognosis, family = binomial, data = data_sub)
 anova(model_val_sub, test = "LRT")
 exp(confint(model_val_sub))
+p_val_inter <- anova(model_val_sub, test = "LRT")["prognosis","Pr(>Chi)"]
 
 # Outcome table
 results_tbl <- model_val %>%
   tbl_regression(
     exponentiate = TRUE,
-  ) %>%
+    pvalue_fun = function(x) {
+      vapply(x, function(p) {
+        if (!is.na(p) & p < 0.001) {
+          exp <- floor(log10(abs(p)))
+          base <- round(p / 10^exp, 3)
+          paste0(base, "*10^", exp)
+        } else {
+          as.character(round(p, 3))
+        }
+      }, character(1))
+    }
+  )
+results_tbl[["table_body"]][["p.value"]] <- c(NA, NA, p_val_inter, p_val_poor)
+results_tbl %>%
   bold_labels() %>%
-  modify_caption("**Validation model: regression results**")
-
-results_tbl
+  modify_caption("Validation model: regression results")
 
 if (savePlots == T) {
   results_tbl_docx <- results_tbl %>%
     as_flex_table() %>%
     flextable::save_as_docx(path = "model_val_oddsratio.docx")
+  
+  ft <- results_tbl %>%
+    as_flex_table()
+  ft <- flextable::delete_part(ft, part = "footer")
+  ft <- flextable::set_caption(
+    ft,
+    caption = flextable::as_paragraph(
+      flextable::as_b("Validation model: regression results")
+    )
+  )
+  ft %>%
+    flextable::save_as_html(path = "model_val_oddsratio.html")
+  pagedown::chrome_print(
+    "model_val_oddsratio.html",
+    output = "model_val_oddsratio.pdf"
+  )
 }
 
 
@@ -189,7 +253,7 @@ p <- ggplot(roc_df_train, aes(x = fpr, y = tpr)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
   theme_minimal(base_size = 14) +
   labs(
-    title = paste0("ROC Curve — AUC = ", round(auc_train, 3)),
+    title = paste0("Training: ROC Curve, \n using Van Renne signature \n — AUC = ", round(auc_train, 3)),
     x = "False Positive Rate",
     y = "True Positive Rate"
   ) +
@@ -198,6 +262,7 @@ p
 
 if (savePlots == T) {
   ggsave("roc_train.png", p, width = 8, height = 6, dpi = 600, bg = "white")
+  ggsave("roc_train.pdf", p, width = 8, height = 6, dpi = 600, bg = "white")
 }
 
 ## Validation
@@ -224,7 +289,7 @@ p <- ggplot(roc_df_val, aes(x = fpr, y = tpr)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
   theme_minimal(base_size = 14) +
   labs(
-    title = paste0("ROC Curve — AUC = ", round(auc_val, 3)),
+    title = paste0("Validation: ROC Curve, \n using Van Renne signature \n — AUC = ", round(auc_val, 3)),
     x = "False Positive Rate",
     y = "True Positive Rate"
   ) +
@@ -233,5 +298,6 @@ p
 
 if (savePlots == T) {
   ggsave("roc_val.png", p, width = 8, height = 6, dpi = 600, bg = "white")
+  ggsave("roc_val.pdf", p, width = 8, height = 6, dpi = 600, bg = "white")
 }
 
