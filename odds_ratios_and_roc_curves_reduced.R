@@ -30,8 +30,8 @@ savePlots <- T
 ### Load data ###
 
 # Load the data with the prediction results
-data_pred_train <- read.delim("output/3_NTP/training_NTP_prediction_result.txt")
-data_pred_val <- read.delim("output/3_NTP/validation_NTP_prediction_result.txt")
+data_pred_train <- read.delim("output/reduced/training_NTP_prediction_result.txt")
+data_pred_val <- read.delim("output/reduced/validation_NTP_prediction_result.txt")
 # Load the clinical metadata
 meta_train <- read.delim("data_files/meta_data/training_full_meta.txt")
 meta_val <- read.delim("data_files/meta_data/validation_full_meta.txt")
@@ -129,7 +129,7 @@ results_tbl
 if (savePlots == T) {
   results_tbl_docx <- results_tbl %>%
     as_flex_table() %>%
-    flextable::save_as_docx(path = "check/model_train_reduc_oddsratio.docx")
+    flextable::save_as_docx(path = "model_train_reduc_oddsratio.docx")
   
   ft <- results_tbl %>%
     as_flex_table()
@@ -141,10 +141,10 @@ if (savePlots == T) {
     )
   )
   ft %>%
-    flextable::save_as_html(path = "check/model_train_reduc_oddsratio.html")
+    flextable::save_as_html(path = "model_train_reduc_oddsratio.html")
   pagedown::chrome_print(
-    "check/model_train_reduc_oddsratio.html",
-    output = "check/model_train_reduc_oddsratio.pdf"
+    "model_train_reduc_oddsratio.html",
+    output = "model_train_reduc_oddsratio.pdf"
   )
 }
 
@@ -206,7 +206,7 @@ results_tbl %>%
 if (savePlots == T) {
   results_tbl_docx <- results_tbl %>%
     as_flex_table() %>%
-    flextable::save_as_docx(path = "check/model_val_reduc_oddsratio.docx")
+    flextable::save_as_docx(path = "model_val_reduc_oddsratio.docx")
   
   ft <- results_tbl %>%
     as_flex_table()
@@ -218,10 +218,10 @@ if (savePlots == T) {
     )
   )
   ft %>%
-    flextable::save_as_html(path = "check/model_val_reduc_oddsratio.html")
+    flextable::save_as_html(path = "model_val_reduc_oddsratio.html")
   pagedown::chrome_print(
-    "check/model_val_reduc_oddsratio.html",
-    output = "check/model_val_reduc_oddsratio.pdf"
+    "model_val_reduc_oddsratio.html",
+    output = "model_val_reduc_oddsratio.pdf"
   )
 }
 
@@ -262,8 +262,8 @@ p <- ggplot(roc_df_train, aes(x = fpr, y = tpr)) +
 p
 
 if (savePlots == T) {
-  ggsave("check/roc_train_reduc.png", p, width = 8, height = 6, dpi = 600, bg = "white")
-  ggsave("check/roc_train_reduc.pdf", p, width = 8, height = 6, dpi = 600, bg = "white")
+  ggsave("roc_train_reduc.png", p, width = 8, height = 6, dpi = 600, bg = "white")
+  ggsave("roc_train_reduc.pdf", p, width = 8, height = 6, dpi = 600, bg = "white")
 }
 
 ## Validation
@@ -298,6 +298,6 @@ p <- ggplot(roc_df_val, aes(x = fpr, y = tpr)) +
 p
 
 if (savePlots == T) {
-  ggsave("check/roc_val_reduc.png", p, width = 8, height = 6, dpi = 600, bg = "white")
-  ggsave("check/roc_val_reduc.pdf", p, width = 8, height = 6, dpi = 600, bg = "white")
+  ggsave("roc_val_reduc.png", p, width = 8, height = 6, dpi = 600, bg = "white")
+  ggsave("roc_val_reduc.pdf", p, width = 8, height = 6, dpi = 600, bg = "white")
 }

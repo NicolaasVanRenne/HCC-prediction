@@ -185,7 +185,7 @@ if(choose.seed == "old"){RNGkind(sample.kind = "Rounding")}else{} #necessary for
 #set input files
 input.exp.filename      = "data_files/collapsed_data/GSE237330_training_RPM.gct"    #gct file of gene expression 
 ###del###	input.features.filename = "output/2_calculate_signature/training_56_RPM_filtered_signature_result_ordered.txt" #.txt file with weighted genes 
-output.name             = "output/3_NTP/training_NTP"
+output.name             = "output/reduced/training_NTP"
 input.meta.data     	= "data_files/meta_data/training_clinical_HCC.txt"
 
 
@@ -919,7 +919,7 @@ if(save.plots==TRUE){  tiff('output/plots/KM_trainingx.tiff', units="in", width=
 
 #set input files
 input.exp.filename      = "data_files/collapsed_data/GSE237331_validation_RPM.gct"    #gct file of gene expression 
-output.name             = "output/3_NTP/validation_NTP"
+output.name             = "output/reduced/validation_NTP"
 input.meta.data     	= "data_files/meta_data/validation_clinical_HCC.txt"
 
 #re-load features
