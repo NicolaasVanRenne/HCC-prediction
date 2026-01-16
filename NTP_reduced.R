@@ -1,111 +1,86 @@
-#filter signature for coefficient of variation
-#################################################
+####################################################
+#
+# filter signature for coefficient of variation>1.25
+#  and perform NTP based on reduced signature 
+#
+####################################################
+
 #set working directory
-#setwd("") 
+	#setwd("") 
+
+#load libraries
+	library(ggplot2)
+	library(survival)
+	library(survminer)
+	library(patchwork)
+	library(dplyr)
 
 #set input files
-input.exp.filename      = "data_files/collapsed_data/GSE237330_training_RPM.gct"    #gct file of gene expression 
-input.features.filename = "output/training_RPM_filtered_signature_result_ordered.txt" #.txt file with weighted genes 
-#input.features.filename = "output/2_calculate_signature/training_56_RPM_filtered_signature_result_ordered_FILTER.txt" #.txt file with weighted genes 
+	input.exp.filename      = "data_files/collapsed_data/GSE237330_training_RPM.gct"    #gct file of gene expression 
+	input.features.filename = "output/training_RPM_filtered_signature_result_ordered.txt" #.txt file with weighted genes 
 
-#calculate coefficient of variation
-exp.dataset<-read.delim(input.exp.filename,header=T,skip=2,check.names=F)
-colnames(exp.dataset)[1:2] <- c("ProbeID","GeneName")
-exp.df <- exp.dataset[,c(3:ncol(exp.dataset))]
-rownames(exp.df) <- exp.dataset$ProbeID
-
-cv_gene <- apply(exp.df, 1, function(x) sd(x) / mean(x))
-
-#plot
-hist(cv_gene)
-
+#load gene expression data
+	exp.dataset<-read.delim(input.exp.filename,header=T,skip=2,check.names=F)
+	colnames(exp.dataset)[1:2] <- c("ProbeID","GeneName")
+	exp.df <- exp.dataset[,c(3:ncol(exp.dataset))]
+	rownames(exp.df) <- exp.dataset$ProbeID
+	
 #adapt input features to the .txt file necessary for the genepattern algorithm
 #marker genes annotations with 4 columns, Probe ID, Gene name, Class (1,2,...), Weight (optional)
-features<-read.delim(input.features.filename,header=T,check.names=F)
-if(ncol(features)>2){print("error!!!! more than 2 columns. Set adapt.genepattern == FALSE ????")}
-features.cls <- c() ; features.cls[which(features[,2] > 1)] <- 1 ;  features.cls[which(features[,2] < 1)] <- 2
-features <- cbind(features[,1],features[,1], features.cls, features[,2])
-colnames(features) <- c("ID","description","class","weight")
-features <- as.data.frame(features)
+	features<-read.delim(input.features.filename,header=T,check.names=F)
+	if(ncol(features)>2){print("error!!!! more than 2 columns. Set adapt.genepattern == FALSE ????")}
+	features.cls <- c() ; features.cls[which(features[,2] > 1)] <- 1 ;  features.cls[which(features[,2] < 1)] <- 2
+	features <- cbind(features[,1],features[,1], features.cls, features[,2])
+	colnames(features) <- c("ID","description","class","weight")
+	features <- as.data.frame(features)
+	features.backup <- features
 
-cv <- cv_gene[names(cv_gene) %in% features$ID]
-features.backup <- features
-
-
-#filter features for weight (Cox Score)
-cox.limit = 0.00 # set limit of Cox scores (absolute values)
-
-features <- features.backup[abs(as.numeric(features.backup$weight)) > cox.limit ,]
-nrow(features)
-
-
-#plot
-hist(cv)
-
-
-# Reorder cv_selection according to the order of IDs in the features dataframe
-ordered_cv_selection <- cv[match(features$ID, names(cv))]
-
-# Add the ordered cv_selection as a new column to the features dataframe
-features$cv <- ordered_cv_selection
-
-#write table
-#write.table(features, file="output/features_cv.txt", row.names=F, quote=F, sep="\t")
-
-#make a dot plot of cox score (weight) and cv
-library(ggplot2)
-ggplot(features, aes(x = as.numeric(weight), y = as.numeric(cv))) +
-  geom_point() +  # Add points for each observation
-  theme_minimal() 
-
-#make a bar graph for publication
-highlight_data <- features[features$ID %in% c("IGHA1", "IGHA2"), ]
-bin_width = 0.25
-p=ggplot(features, aes(x = cv)) +
-  geom_histogram(binwidth = bin_width, boundary = 0, fill="lightgrey", color="black") +
-  #scale_x_continuous(breaks = seq(0, max(features$cv), by = bin_width)) +
-  scale_x_continuous(breaks = seq(floor(min(features$cv)), ceiling(max(features$cv)), by = 1)) + # Labels only at integer values
-  scale_y_continuous(expand = c(0, 0)) + # This will make the bars touch the Y-axis
-  labs(x = "Coefficient of variation", y = "Number of genes", title = "Distribution of Coefficient of variation") +
-  theme_classic() +
-  geom_vline(xintercept = 0.75, linetype = "dashed", color = "blue", size = 1.5)  # Adds the dashed line
-#annotate("text", x = max(cv_df$cv) - 1, y = 45, 
-#        label = "Reduced signature", size = 6, fontface = "bold") +
-#annotate("text", x = max(cv_df$cv) - 1, y = 35, 
-#        label = "61 high risk genes\n 93 low risk genes", size = 6)
-#geom_text(data = highlight_data, aes(x = cv, y = after_stat(count), 
-#         label = paste("cv =", rownames(highlight_data), "(", round(cv,digits=2), ")", sep = "")), 
-#        stat = "bin", vjust = 0.5, color = "red", size = 5)
-p
-#tiff("reduced_hist_cv0.75.tiff", width = 350, height = 350)
-#p
-#dev.off()
-
+#calculate coefficient of variation
+	cv_gene <- apply(exp.df, 1, function(x) sd(x) / mean(x))
 
 #set limit for cv
-cv.limit = 1.25 # set limit of coefficient of variation
+	cv.limit = 1.25 # set limit of coefficient of variation
 
-features <- features[features$cv > cv.limit ,]
-features <- features[ , -5]
-features.temp <- features
+#calculate cv of the risk genes and match the order 
+	cv_risk_genes <- cv_gene[names(cv_gene) %in% features$ID]
+	hist(cv_risk_genes)
+	
+# Reorder cv_selection according to the order of IDs in the features dataframe
+	cv_risk_genes_ordered <- cv_risk_genes[match(features$ID, names(cv_risk_genes))]	
 
-table(features$class)
-sum(table(features$class))
+# Add the ordered cv_selection as a new column to the features dataframe
+	features$cv <- cv_risk_genes_ordered
 
-#turn it into gene sets
-genesets <- list()
-genesets[[1]] <- features[,"ID"][features[,"weight"] > 0] ; names(genesets)[1] <- "High-risk genes"
-genesets[[2]] <- features[,"ID"][features[,"weight"] < 0] ; names(genesets)[2] <- "Low-risk genes"
+#make a bar graph for publication
+	bin_width = 0.25
+	p=ggplot(features, aes(x = cv)) +
+	  geom_histogram(binwidth = bin_width, boundary = 0, fill="lightgrey", color="black") +
+	  scale_x_continuous(breaks = seq(floor(min(features$cv)), ceiling(max(features$cv)), by = 1)) + 
+	  scale_y_continuous(expand = c(0, 0)) + # This will make the bars touch the Y-axis
+	  labs(x = "Coefficient of variation", y = "Number of genes", title = "Distribution of Coefficient of variation") +
+	  theme_classic() +
+	  geom_vline(xintercept = 0.75, linetype = "dashed", color = "blue", size = 1.5) +
+	  theme(
+		text = element_text(color = "black", size = 16),
+		axis.title = element_text(size = 18),
+		axis.text = element_text(size = 14),
+		plot.title = element_text(size = 20, face = "bold", hjust = 0.5)
+	  )	  
+	p
 
-# save
-#write.table(features[,c("ID","weight")], file="reduced_signature.txt", sep="\t", row.names = F, col.names = F)
-orig_sign <- read.table(file="data_files/gmt_files/signatures.gmt", sep="\t", fill=T)
-new_sign <- orig_sign[c(3,4),]
-poor.genes <- features[features$weight > 0, 1]
-good.genes <- features[features$weight < 0, 1]
-new_sign[3,] <- c(rep("Reduced_VanRenne_poor",2), genesets[[1]], rep("", ncol(orig_sign)-2-length(genesets[[1]])))
-new_sign[4,] <- c(rep("Reduced_VanRenne_good",2), genesets[[2]], rep("", ncol(orig_sign)-2-length(genesets[[2]])))
-#write.table(new_sign, file="data_files/gmt_files/reduced_signature.gmt", sep="\t", row.names = F, col.names = F)
+
+#subset gene signature based on cv
+	features <- features[features$cv > cv.limit ,]
+	
+#remove the cv column, and store in object	
+	features$cv <- NULL
+	features.temp <- features
+
+#summarize reduced gene set 
+	table(features$class) #total risk genes
+	sum(table(features$class)) # 1: high-risk genes, 2:low-risk genes
+
+
 
 
 
@@ -162,16 +137,9 @@ new_sign[4,] <- c(rep("Reduced_VanRenne_good",2), genesets[[2]], rep("", ncol(or
 
 
 
-#load libraries
-library(survival)
-library(survminer)
-library(patchwork)
-library(dplyr)
+
 
 save.plots=FALSE
-
-#set working directory
-#setwd("") 
 
 
 #set random seed version to old (R version < 3.6) or new (R version > 3.6)
@@ -184,19 +152,8 @@ if(choose.seed == "old"){RNGkind(sample.kind = "Rounding")}else{} #necessary for
 
 #set input files
 input.exp.filename      = "data_files/collapsed_data/GSE237330_training_RPM.gct"    #gct file of gene expression 
-###del###	input.features.filename = "output/2_calculate_signature/training_56_RPM_filtered_signature_result_ordered.txt" #.txt file with weighted genes 
-output.name             = "output/reduced/training_NTP"
+output.name             = "output/reduced/training_NTP" #output folder and filename
 input.meta.data     	= "data_files/meta_data/training_clinical_HCC.txt"
-
-
-###del###  #adapt input features to the .txt file necessary for the genepattern algorithm
-###del###  	#marker genes annotations with 4 columns, Probe ID, Gene name, Class (1,2,...), Weight (optional)
-###del###  	features<-read.delim(input.features.filename,header=T,check.names=F)
-###del###  	if(ncol(features)>2){print("error!!!! more than 2 columns. Set adapt.genepattern == FALSE ????")}
-###del###  	features.cls <- c() ; features.cls[which(features[,2] > 1)] <- 1 ;  features.cls[which(features[,2] < 1)] <- 2
-###del###  	features <- cbind(features[,1],features[,1], features.cls, features[,2])
-###del###  	colnames(features) <- c("ID","description","class","weight")
-###del###  	features <- as.data.frame(features)
 
 
 ########################################################################
@@ -813,105 +770,8 @@ input.meta.data     	= "data_files/meta_data/training_clinical_HCC.txt"
   }
 }	
 
-#note: the output will be printed to your working directory
+#note: the output will be printed to your output directory
 #note: the NTP output itself is stored in the object pred.summary
-
-#how many genes of the signature are in this dataset? 
-table(features.extract$class)
-t1=table(features.extract$class)
-
-#Stratify samples according to NTP prediction: BH<0.05
-prognosis <- rep(0,nrow(pred.summary)) 
-for(i in seq_along(prognosis)){
-  if(pred.summary[i,2] == 1 & pred.summary[i,6] < 0.05){ prognosis[i] <- "poor"}
-  if(pred.summary[i,2] == 2 & pred.summary[i,6] < 0.05){ prognosis[i] <- "good"}
-  if(                         pred.summary[i,6] >= 0.05){ prognosis[i] <- "intermediate"}
-}
-
-# Create Kaplan Meier curves
-#read clinical data		  
-meta.data <- read.table(file = input.meta.data, header=T, sep="\t", row.names=1)
-km.df <- cbind(select(meta.data, c("status","time")), prognosis)
-
-#set event and time 
-set.time  = "time"    #column name of time
-set.event = "status"        #column name of event
-
-#create survival objects
-poor.int.good        <- survfit(Surv(as.numeric(get(set.time)), as.numeric(get(set.event))) ~ prognosis, data = km.df)
-poor.good.remove.int <- survfit(Surv(as.numeric(get(set.time)), as.numeric(get(set.event))) ~ prognosis, data = km.df[which(km.df$prognosis != "intermediate"),])
-
-p.pairwise 			<- pairwise_survdiff(Surv(as.numeric(get(set.time)), as.numeric(get(set.event))) ~ prognosis, data = km.df, p.adjust.method = "none")
-
-#plot event curve
-event.plot.1 <- ggsurvplot(poor.int.good,         fun= "event", pval = surv_pvalue(poor.int.good)$pval,        conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata", linetype = "strata",   palette = c("mediumblue", "darkgrey", "tomato")) #poor VS intermediate VS good 
-event.plot.1.no.pvalue <- ggsurvplot(poor.int.good,         fun= "event",        conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata", linetype = "strata",  palette = c("mediumblue", "darkgrey", "tomato")) #poor VS intermediate VS good 
-event.plot.2 <- ggsurvplot(poor.good.remove.int,  fun= "event", pval = surv_pvalue(poor.good.remove.int)$pval, conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata", linetype = "strata", palette = c("mediumblue", "tomato")) #poor VS good (remove intermediates)
-
-p1=arrange_ggsurvplots(list(event.plot.1,event.plot.2), ncol=2, title= "Training NTP prediction")		  
-p1
-#create truncated Kaplan Meier curve when patients at risk drops below 10% for visualization purpose (not for p-value!)
-#store p-values
-pval.plot.1 <- surv_pvalue(poor.int.good)$pval
-pval.plot.2	<- surv_pvalue(poor.good.remove.int)$pval
-
-#settings
-cutoff.at.risk.percentage = 10 #set percentage to cut eg. 'cutoff.at.risk = 10' for 10%
-#set.event = "status" #set event to find 10% at risk
-
-#calculate time for cutoff 
-km.truncate.df <-km.df
-km.truncate.df$all <- rep("all", nrow(km.df))
-km.truncate.df[,colnames(km.truncate.df) %in% set.event] <- rep(1,nrow(km.truncate.df))
-
-survfit.truncate <- survfit(Surv(as.numeric(get(set.time)), as.numeric(get(set.event))) ~ all, data = km.truncate.df)
-summary(survfit.truncate) #show at time and risk table
-
-n.at.risk <- max(summary(survfit.truncate)$n.risk)
-n.at.risk.cutoff <- ceiling((n.at.risk/100)*cutoff.at.risk.percentage)
-cutoff.time.x.axis <- min(summary(survfit.truncate)$time[which(summary(survfit.truncate)$n.risk <= n.at.risk.cutoff)])
-{
-  print(paste(n.at.risk,"patients in kaplan meier curve"))
-  print(paste("This algorithm will cut off the kaplan meier curve when less than",cutoff.at.risk.percentage,"% of patients are at risk."))
-  print(paste("This KM curve will be cut when less than",n.at.risk.cutoff,"patients are at risk."))
-  print(paste("This KM curve will be cut at timepoint",cutoff.time.x.axis))
-}
-
-#visualize			
-event.plot 				<- ggsurvplot(poor.int.good,  fun= "event", pval = surv_pvalue(poor.int.good)$pval, pval.coord = c(0,1), conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata",  palette = c("mediumblue", "darkgrey", "tomato"), xlim = c(0,cutoff.time.x.axis )) 
-event.plot.no.pvalue 	<- ggsurvplot(poor.int.good,  fun= "event",        conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata",  palette = c("mediumblue", "darkgrey", "tomato"), xlim = c(0,cutoff.time.x.axis )) 
-event.plot.2 			<- ggsurvplot(poor.good.remove.int,  fun= "event", pval = surv_pvalue(poor.good.remove.int)$pval, pval.coord = c(0,1), conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata", palette = c("mediumblue", "tomato"), xlim = c(0,cutoff.time.x.axis )) 
-event.plot.3 			<- ggsurvplot(poor.int.good,  fun= "event", pval = paste0("poor VS good \n p=", surv_pvalue(poor.good.remove.int)$pval), pval.coord = c(0,0.95), conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata", palette = c("mediumblue", "darkgrey","tomato"), xlim = c(0,cutoff.time.x.axis )) 
-arrange_ggsurvplots(list(event.plot,event.plot.2), ncol=2, title= "TITLE HERE")		
-
-
-#publication picture
-p=ggsurvplot(poor.int.good,
-             fun= "event",
-             pval = paste0("poor VS good \np=", signif(surv_pvalue(poor.good.remove.int)$pval,3)),
-             pval.coord = c(0,0.95),
-             pval.size=7,
-             conf.int = FALSE,
-             risk.table = TRUE, risk.table.fontsize=6,
-             risk.table.height=0.3,
-             risk.table.y.text = TRUE,
-             font.x=20,
-             font.y=20,
-             font.tickslab=20,
-             palette = c("mediumblue", "darkgrey","tomato"),
-             xlim = c(0,cutoff.time.x.axis),
-             legend = 'none',
-             xlab="Time (years)",
-             ylab="HCC incidence"
-)
-p$table <- p$table + 
-  theme(axis.text.x = element_text(size = 20), axis.title.x = element_text(size = 20)) +
-  theme(axis.title.y = element_text(size = 20)) + ylab("Prognosis") + 
-  scale_y_discrete(labels=c('poor', 'intermediate', 'good'))
-p
-p1 <- p
-if(save.plots==TRUE){  tiff('output/plots/KM_trainingx.tiff', units="in", width=7, height=7, res=300, compression = 'lzw');print(p);dev.off()  }
-
 
 
 ### 2. Validation set
@@ -1539,109 +1399,6 @@ features <- features.temp
   }
 }	
 
-#note: the output will be printed to your working directory
+#note: the output will be printed to your output directory
 #note: the NTP output itself is stored in the object pred.summary
-
-#how many genes of the signature are in this dataset? 
-table(features.extract$class)
-t2=table(features.extract$class)
-
-#Stratify samples according to NTP prediction: BH<0.05
-prognosis <- rep(0,nrow(pred.summary)) 
-for(i in seq_along(prognosis)){
-  if(pred.summary[i,2] == 1 & pred.summary[i,6] < 0.05){ prognosis[i] <- "poor"}
-  if(pred.summary[i,2] == 2 & pred.summary[i,6] < 0.05){ prognosis[i] <- "good"}
-  if(                         pred.summary[i,6] >= 0.05){ prognosis[i] <- "intermediate"}
-}
-
-# Create Kaplan Meier curves
-#read clinical data		  
-meta.data <- read.table(file = input.meta.data, header=T, sep="\t", row.names=1)
-km.df <- cbind(select(meta.data, c("status","time")), prognosis)
-
-#set event and time 
-set.time  = "time"    #column name of time
-set.event = "status"        #column name of event
-
-#create survival objects
-poor.int.good        <- survfit(Surv(as.numeric(get(set.time)), as.numeric(get(set.event))) ~ prognosis, data = km.df)
-poor.good.remove.int <- survfit(Surv(as.numeric(get(set.time)), as.numeric(get(set.event))) ~ prognosis, data = km.df[which(km.df$prognosis != "intermediate"),])
-
-p.pairwise 			<- pairwise_survdiff(Surv(as.numeric(get(set.time)), as.numeric(get(set.event))) ~ prognosis, data = km.df, p.adjust.method = "none")
-
-
-#plot event curve
-event.plot.1 <- ggsurvplot(poor.int.good,         fun= "event", pval = surv_pvalue(poor.int.good)$pval,        conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata", linetype = "strata", ggtheme = theme_bw(),  palette = c("mediumblue", "darkgrey", "tomato")) #poor VS intermediate VS good 
-event.plot.1.no.pvalue <- ggsurvplot(poor.int.good,         fun= "event",        conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata", linetype = "strata", ggtheme = theme_bw(),  palette = c("mediumblue", "darkgrey", "tomato")) #poor VS intermediate VS good 
-event.plot.2 <- ggsurvplot(poor.good.remove.int,  fun= "event", pval = surv_pvalue(poor.good.remove.int)$pval, conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata", linetype = "strata", ggtheme = theme_bw(), palette = c("mediumblue", "tomato")) #poor VS good (remove intermediates)
-
-p2=arrange_ggsurvplots(list(event.plot.1,event.plot.2), ncol=2, title= "Validation_NTP prediction")		  
-p2
-
-#create truncated Kaplan Meier curve when patients at risk drops below 10% for visualization purpose (not for p-value!)
-#store p-values
-pval.plot.1 <- surv_pvalue(poor.int.good)$pval
-pval.plot.2	<- surv_pvalue(poor.good.remove.int)$pval
-
-#settings
-cutoff.at.risk.percentage = 10 #set percentage to cut eg. 'cutoff.at.risk = 10' for 10%
-#set.event = "status" #set event to find 10% at risk
-
-#calculate time for cutoff 
-km.truncate.df <-km.df
-km.truncate.df$all <- rep("all", nrow(km.df))
-km.truncate.df[,colnames(km.truncate.df) %in% set.event] <- rep(1,nrow(km.truncate.df))
-
-survfit.truncate <- survfit(Surv(as.numeric(get(set.time)), as.numeric(get(set.event))) ~ all, data = km.truncate.df)
-summary(survfit.truncate) #show at time and risk table
-
-n.at.risk <- max(summary(survfit.truncate)$n.risk)
-n.at.risk.cutoff <- ceiling((n.at.risk/100)*cutoff.at.risk.percentage)
-cutoff.time.x.axis <- min(summary(survfit.truncate)$time[which(summary(survfit.truncate)$n.risk <= n.at.risk.cutoff)])
-{
-  print(paste(n.at.risk,"patients in kaplan meier curve"))
-  print(paste("This algorithm will cut off the kaplan meier curve when less than",cutoff.at.risk.percentage,"% of patients are at risk."))
-  print(paste("This KM curve will be cut when less than",n.at.risk.cutoff,"patients are at risk."))
-  print(paste("This KM curve will be cut at timepoint",cutoff.time.x.axis))
-}
-
-#visualize			
-event.plot 				<- ggsurvplot(poor.int.good,  fun= "event", pval = surv_pvalue(poor.int.good)$pval, pval.coord = c(0,1), conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata",  palette = c("mediumblue", "darkgrey", "tomato"), xlim = c(0,cutoff.time.x.axis)) 
-event.plot.no.pvalue 	<- ggsurvplot(poor.int.good,  fun= "event",        conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata",  palette = c("mediumblue", "darkgrey", "tomato"), xlim = c(0,cutoff.time.x.axis )) 
-event.plot.2 			<- ggsurvplot(poor.good.remove.int,  fun= "event", pval = surv_pvalue(poor.good.remove.int)$pval, pval.coord = c(0,1), conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata", palette = c("mediumblue", "tomato"), xlim = c(0,cutoff.time.x.axis)) 
-event.plot.3 			<- ggsurvplot(poor.int.good,  fun= "event", pval = paste("poor VS good \n p =", surv_pvalue(poor.good.remove.int)$pval), pval.coord = c(0,0.95), conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata", palette = c("mediumblue", "darkgrey","tomato"), xlim = c(0,cutoff.time.x.axis))
-
-arrange_ggsurvplots(list(event.plot,event.plot.2), ncol=2, title= "TITLE HERE")	
-
-#reset X axis with 0,5,10,15 at time axis
-event.plot.3 	<- ggsurvplot(poor.int.good,  fun= "event", pval = paste("poor VS good \n p =", surv_pvalue(poor.good.remove.int)$pval), pval.coord = c(0,0.95), conf.int = FALSE, risk.table = TRUE, risk.table.col = "strata", palette = c("mediumblue", "darkgrey","tomato"), xlim = c(0,cutoff.time.x.axis), break.time.by=5)
-event.plot.3 
-
-p=ggsurvplot(poor.int.good,
-             fun= "event",
-             pval = paste0("poor VS good \np=", signif(surv_pvalue(poor.good.remove.int)$pval,3)),
-             pval.coord = c(0,0.80),
-             pval.size=7,
-             conf.int = FALSE,
-             risk.table = TRUE, risk.table.fontsize=6,
-             risk.table.height=0.3,
-             risk.table.y.text = TRUE,
-             font.x=20,
-             font.y=20,
-             font.tickslab=20,
-             break.time.by=5,
-             palette = c("mediumblue", "darkgrey","tomato"),
-             xlim = c(0,cutoff.time.x.axis),
-             legend = 'none',
-             xlab="Time (years)",
-             ylab="HCC incidence"
-)
-p$table <- p$table + 
-  theme(axis.text.x = element_text(size = 20), axis.title.x = element_text(size = 20)) +
-  theme(axis.title.y = element_text(size = 20)) + ylab("Prognosis") + 
-  scale_y_discrete(labels=c('poor', 'intermediate', 'good'))
-p
-p2 <- p
-if(save.plots==TRUE){  tiff('output/plots/KM_validation.tiff', units="in", width=7, height=7, res=300, compression = 'lzw');print(p);dev.off()  }
-
 
