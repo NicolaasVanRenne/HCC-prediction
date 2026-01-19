@@ -9,7 +9,7 @@ Some remarks for reproducing the data:
 
 It is best to keep the folder structure as shown in this repository.
 
-All data files necessary to reproduce the figures are available on Zenode (DOI '10.5281/zenodo.18299496'). Alternatively, the gene transcription data files are also stored in NCBI GEO GSE237332 and processed data (RPM and raw read counts) can be retrieved from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE237332
+All data files necessary to reproduce the figures are available on Zenodo (DOI '10.5281/zenodo.18299496'). Alternatively, the gene transcription data files are also stored in NCBI GEO GSE237332 and processed data (RPM and raw read counts) can be retrieved from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE237332
 These gene expression matrices should be formatted as .gct files. More info on gct format on https://software.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats
 
 The scRNA-seq data seurat objects can be downloaded from Zenodo (DOI '10.5281/zenodo.11487047', DOI '10.5281/zenodo.10149894' and DOI '10.5281/zenodo.13643040') as .Rds files. They should be stored in data_files/scRNAseq_data 
