@@ -7,12 +7,10 @@ This repository contains all the code to reproduce the gene signature, and figur
 
 Some remarks for reproducing the data:
 
-It is best to keep the folder structure as shown here.
+It is best to keep the folder structure as shown in this repository.
 
-The gene transcription data files are stored in NCBI GEO GSE237332 and processed data (RPM and raw read counts) can be retrieved from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE237332
+All data files necessary to reproduce the figures are available on Zenode (DOI '10.5281/zenodo.18299496'). Alternatively, the gene transcription data files are also stored in NCBI GEO GSE237332 and processed data (RPM and raw read counts) can be retrieved from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE237332
 These gene expression matrices should be formatted as .gct files. More info on gct format on https://software.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats
-
-The headers of the .gct files are provided in data_files/collapsed_data. The processed data from the training set and validation set on GSE237332 can be pasted in these files in order to work.  
 
 The scRNA-seq data seurat objects can be downloaded from Zenodo (DOI '10.5281/zenodo.11487047', DOI '10.5281/zenodo.10149894' and DOI '10.5281/zenodo.13643040') as .Rds files. They should be stored in data_files/scRNAseq_data 
 
@@ -32,6 +30,8 @@ In the output folder, all files will be stored that are created with this code a
 10) signatures_scRNAseq.R  
 11) IHC_staining_heatmap.R
 12) serumIgA_bulkRNA_correlation.R
+
+
     
 ## generating a clinical gene signature on your own data
 You can also use this code to create a gene signature with your own gene expression data. Gene expression file should be .gct format, and file names can be changed in the calculacte_signature.R code.
