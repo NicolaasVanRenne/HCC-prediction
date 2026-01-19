@@ -1,12 +1,16 @@
 
 ###########################################################
 #
-# Calculate odds ratios and ROC curves
+# Calculate odds ratios 
 # For the training and validation dataset
 # For the prognosis based on the reduced gene signature
 #
 ##########################################################
 
+#Set dir
+	setwd("C:/my_dir")
+	
+	
 ### Packages ###
 
 library(dplyr)
@@ -223,81 +227,4 @@ if (savePlots == T) {
     "model_val_reduc_oddsratio.html",
     output = "model_val_reduc_oddsratio.pdf"
   )
-}
-
-### Create ROC curves ###
-
-# Create ROC curves for the predicted prognosis of the gene signature compared with the observed outcome
-# And calculate the corresponding AUCs
-
-## Training
-
-# Predicted probabilities
-pred_train <- predict(model_train, type = "response")
-
-# Compute ROC curve
-roc_train <- roc(response = data_train$HCC_event, predictor = pred_train)
-
-# AUC
-auc_train <- auc(roc_train)
-print(auc_train)
-
-# Convert ROC object to data frame
-roc_df_train <- data.frame(
-  fpr = 1 - roc_train$specificities,
-  tpr = roc_train$sensitivities
-)
-
-# Plot ROC curve
-p <- ggplot(roc_df_train, aes(x = fpr, y = tpr)) +
-  geom_line(color = "#1B9E77", size = 1.2) +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
-  theme_minimal(base_size = 14) +
-  labs(
-    title = paste0("Training: ROC Curve, \n using reduced Van Renne signature \n — AUC = ", round(auc_train, 3)),
-    x = "False Positive Rate",
-    y = "True Positive Rate"
-  ) +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
-p
-
-if (savePlots == T) {
-  ggsave("roc_train_reduc.png", p, width = 8, height = 6, dpi = 600, bg = "white")
-  ggsave("roc_train_reduc.pdf", p, width = 8, height = 6, dpi = 600, bg = "white")
-}
-
-## Validation
-
-# Predicted probabilities
-pred_val <- predict(model_val, type = "response")
-
-# Compute ROC curve
-roc_val <- roc(response = data_val$HCC_event, predictor = pred_val)
-
-# AUC
-auc_val <- auc(roc_val)
-print(auc_val)
-
-# Convert ROC object to data frame
-roc_df_val <- data.frame(
-  fpr = 1 - roc_val$specificities,
-  tpr = roc_val$sensitivities
-)
-
-# Plot ROC curve
-p <- ggplot(roc_df_val, aes(x = fpr, y = tpr)) +
-  geom_line(color = "#1B9E77", size = 1.2) +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
-  theme_minimal(base_size = 14) +
-  labs(
-    title = paste0("Validation: ROC Curve, \n using reduced Van Renne signature \n — AUC = ", round(auc_val, 3)),
-    x = "False Positive Rate",
-    y = "True Positive Rate"
-  ) +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
-p
-
-if (savePlots == T) {
-  ggsave("roc_val_reduc.png", p, width = 8, height = 6, dpi = 600, bg = "white")
-  ggsave("roc_val_reduc.pdf", p, width = 8, height = 6, dpi = 600, bg = "white")
 }
