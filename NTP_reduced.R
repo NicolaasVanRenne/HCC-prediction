@@ -6,7 +6,7 @@
 ####################################################
 
 #set working directory
-	#setwd("") 
+	setwd("") 
 
 #load libraries
 	library(ggplot2)
@@ -133,9 +133,6 @@
 #	are determined inapplicable, your sole remedy, regardless of the form of action, 
 #	including, but not limited to, negligence and strict liability, shall be replacement
 #	of the software with an updated version if one exists.
-
-
-
 
 
 
@@ -1401,4 +1398,3 @@ features <- features.temp
 
 #note: the output will be printed to your output directory
 #note: the NTP output itself is stored in the object pred.summary
-
