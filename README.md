@@ -1,6 +1,6 @@
 # HCC prediction study 
-This repository provides all the code used in Van Renne et al. for the manuscript: "A liver and serum IgA signature predicts hepatocellular 
-carcinoma in chronic viral hepatitis patients" 2025 JHEP Reports
+This repository provides all the code used in Van Renne et al. for the manuscript: ["A liver and serum IgA signature predicts hepatocellular 
+carcinoma in chronic viral hepatitis patients" 2025 JHEP Reports](https://www.jhep-reports.eu/article/S2589-5559(25)00397-0/fulltext)
 
 This repository contains all the code to reproduce the gene signature, and figures of this manuscript.
 
